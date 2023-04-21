@@ -3,196 +3,51 @@
   <head>
     <title>Life Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-        // Define the function to remove a module
-        const removeModule = (moduleDiv) => {
-        // Remove the module from the DOM
-        moduleDiv.remove();
-
-        // Remove the user preferences from the server
-        removeUserPreferences(moduleDiv.id);
-        };
-
-        // Define the function to save user preferences to the server
-        const saveUserPreferences = (moduleId, jsonUrl, x, y, graphColor) => {
-        // Save the user preferences to the server using an AJAX request
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/save_preferences', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-            console.log(xhr.responseText);
-            }
-        };
-        const data = JSON.stringify({ module_id: moduleId, json_url: jsonUrl, x_axis: x, y_axis: y, graph_color: graphColor });
-        xhr.send(data);
-        };
-
-        // Define the function to remove user preferences from the server
-        const removeUserPreferences = (moduleId) => {
-        // Remove the user preferences from the server using an AJAX request
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/remove_preferences', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-            console.log(xhr.responseText);
-            }
-        };
-        const data = JSON.stringify({ module_id: moduleId });
-        xhr.send(data);
-        };
-
-        // Define the function to update the chart.js graph
-        const updateChart = (moduleId, jsonUrl, x, y, graphColor) => {
-        // Load the data from the JSON URL using an AJAX request
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', jsonUrl, true);
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-            const data = JSON.parse(xhr.responseText);
-
-            // Get the canvas element for the chart
-            const canvas = document.querySelector(`#${moduleId} canvas`);
-
-            // Create the chart.js graph
-            const ctx = canvas.getContext('2d');
-            const chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                labels: data.map((item) => item[x]),
-                datasets: [
-                    {
-                    label: y,
-                    data: data.map((item) => item[y]),
-                    backgroundColor: graphColor,
-                    borderColor: graphColor,
-                    borderWidth: 1,
-                    fill: false,
-                    },
-                ],
-                },
-                options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                },
-            });
-            }
-        };
-        xhr.send();
-        };
-
-        // Add event listener for the add button to add a new module
-        document.getElementById('add-btn').addEventListener('click', () => {
-        // Define the default data for the new module
-        const defaultModuleData = {
-            module_name: `Module ${moduleCounter + 1}`,
-            json_url: '',
-            x_axis: '',
-            y_axis: '',
-            graph_color: '#000000',
-        };
-
-        // Add the new module to the DOM
-        addModule(defaultModuleData);
-        });
-
-        // Add event listener for the remove buttons to remove a module
-        document.addEventListener('click', (event) => {
-        if (event.target.matches('.remove-btn')) {
-            const moduleDiv = event.target.closest('.module');
-            removeModule(moduleDiv);
-        }
-        });
-
-        // Load the user preferences from the server and add the modules to the DOM
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', '/user-preferences', true);
-        xhr.setRequestHeader('Content-type', 'application/json');
-        xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            const userPreferences = JSON.parse(xhr.responseText);
-
-            // Add the modules to the DOM using the user preferences
-            userPreferences.forEach((moduleData) => {
-            addModule(moduleData);
-            });
-        }
-        };
-        xhr.send();
-
-        // Function to add a new module to the DOM
-        function addModule(moduleData) {
-        const module = document.createElement('div');
-        module.classList.add('module');
-
-        // Add a header with the module title
-        const header = document.createElement('div');
-        header.classList.add('header');
-        header.textContent = moduleData.title;
-        module.appendChild(header);
-
-        // Add a canvas element for the chart.js graph
-        const canvas = document.createElement('canvas');
-        canvas.setAttribute('width', '400');
-        canvas.setAttribute('height', '400');
-        module.appendChild(canvas);
-
-        // Load the JSON data for the chart
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', moduleData.dataUrl, true);
-        xhr.setRequestHeader('Content-type', 'application/json');
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-            const data = JSON.parse(xhr.responseText);
-            const ctx = canvas.getContext('2d');
-
-            // Determine the x and y data keys from the module settings
-            const xAxisKey = moduleData.settings.xAxisKey;
-            const yAxisKey = moduleData.settings.yAxisKey;
-            const xData = data.map((obj) => obj[xAxisKey]);
-            const yData = data.map((obj) => obj[yAxisKey]);
-
-            // Determine the color for the graph from the module settings
-            const color = moduleData.settings.color;
-
-            // Create the chart
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                labels: xData,
-                datasets: [{
-                    label: yAxisKey,
-                    data: yData,
-                    backgroundColor: color,
-                    borderColor: color,
-                    borderWidth: 1
-                }]
-                }
-            });
-            }
-        };
-        xhr.send();
-
-        // Add the module to the DOM
-        const dashboard = document.querySelector('.dashboard');
-        dashboard.appendChild(module);
-        }
-    </script>
-    <style>
-
-    </style>
-  </head>
   <body>
-    <header>
-      <h1>Life Dashboard</h1>
-    </header>
-    <main>
-      <div id="container"></div>
-    </main>
-    <footer>
-      <p>&copy; 2023 Life Dashboard</p>
-    </footer>
+    <!-- Registration Form -->
+<form onsubmit="registerUser(event)">
+  <input type="text" id="register-username" placeholder="Username" required>
+  <input type="password" id="register-password" placeholder="Password" required>
+  <button type="submit">Register</button>
+</form>
+
+<!-- Login Form -->
+<form onsubmit="loginUser(event)">
+  <input type="text" id="login-username" placeholder="Username" required>
+  <input type="password" id="login-password" placeholder="Password" required>
+  <button type="submit">Login</button>
+</form>
+
+<script>
+  async function registerUser(event) {
+    event.preventDefault();
+    const username = document.getElementById("register-username").value;
+    const password = document.getElementById("register-password").value;
+
+    // Send a POST request to the server with the registration data
+    const response = await fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    // Handle server response (e.g., show a success message, error message, etc.)
+  }
+
+  async function loginUser(event) {
+    event.preventDefault();
+    const username = document.getElementById("login-username").value;
+    const password = document.getElementById("login-password").value;
+
+    // Send a POST request to the server with the login data
+    const response = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    // Handle server response (e.g., show a success message, error message, redirect to another page, etc.)
+  }
+</script>
   </body>
 </html>
