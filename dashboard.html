@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script>
+      Chart.defaults.global.plugins.streaming = {
+        dateAdapter: moment,
+      };
+    </script>
+    <style>
+      .container {
+        padding-top: 50px;
+      }
+
+      #custom-contribution-calendar {
+        padding-top: 100px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>My Workout Tracker</h1>
+    <button id="logoutButton">Logout</button>
+    <p>To get your yam tam, paste google sheet JSON URL:</p>
+    <input id="json-url-input" type="text" />
+    <button id="loadDataButton">Load data</button>
+    <div id="chart-container">
+      <canvas id="chartCanvas"></canvas>
+    </div>
+
+    <label for="x-prop-select">Select X property:</label>
+    <select id="x-prop-select"></select>
+
+    <label for="y-prop-select">Select Y property:</label>
+    <select id="y-prop-select"></select>
+
+    <div class="container">
+      <input
+        id="calendar-json-url-input"
+        type="text"
+        placeholder="Enter Calendar JSON URL"
+      />
+      <button id="loadCalendarDataButton">Load Calendar Data</button>
+      <label for="activity-prop-select">Select Activity property:</label>
+      <select id="activity-prop-select"></select>
+      <div id="custom-contribution-calendar"></div>
+    </div>
+    <script>
+      let data = null;
+      let xProp = null;
+      let yProp = null;
+      let calendarData = null;
+      let activityProp = null;
+
+      function loadData() {
+        const url = document.getElementById("json-url-input").value;
+        fetch(url)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch data");
+            }
+            return response.json();
+          })
+          .then((jsonData) => {
+            data = jsonData;
+            loadSelectOptions();
+            xProp = document.getElementById("x-prop-select").value;
+            yProp = document.getElementById("y-prop-select").value;
+            drawChart();
+          })
+          .catch((error) => {
+            console.error("Error fetching data:", error);
+          });
+      }
+
+      function loadCalendarData() {
+        const url = document.getElementById("calendar-json-url-input").value;
+        fetch(url)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch calendar data");
+            }
+            return response.json();
+          })
+          .then((jsonData) => {
+            calendarData = jsonData;
+            loadActivitySelectOptions();
+            activityProp = document.getElementById(
+              "activity-prop-select"
+            ).value;
+            drawCustomContributionCalendar(calendarData);
+          })
+          .catch((error) => {
+            console.error("Error fetching calendar data:", error);
+          });
+      }
+
+      function loadSelectOptions() {
+        const selectX = document.getElementById("x-prop-select");
+        const selectY = document.getElementById("y-prop-select");
+        const firstRow = data[0];
+        for (const prop in firstRow) {
+          const option = document.createElement("option");
+          option.value = prop;
+          option.text = prop;
+          selectX.add(option);
+          selectY.add(option.cloneNode(true));
+        }
+        selectX.value = "Date";
+        selectY.value = "Commits";
+      }
+
+      function loadActivitySelectOptions() {
+        const selectActivity = document.getElementById("activity-prop-select");
+        const firstRow = calendarData[0];
+        for (const prop in firstRow) {
+          const option = document.createElement("option");
+          option.value = prop;
+          option.text = prop;
+          selectActivity.add(option);
+        }
+        selectActivity.value = "Commits";
+      }
+
+      // Declare the global chart variable
+      let chart;
+
+      function drawChart() {
+        const canvas = document.getElementById("chartCanvas");
+        const context = canvas.getContext("2d");
+
+        // Destroy the previous chart instance if it exists
+        if (chart) {
+          chart.destroy();
+        }
+
+        const xValues = data.map((row) => moment.utc(row[xProp], "YYYY-MM-DD").toDate());
+        const yValues = data.map((row) => row[yProp]);
+
+        // Create a new chart instance and assign it to the global variable
+        chart = new Chart(context, {
+          type: "line",
+          data: {
+            labels: xValues,
+            datasets: [
+              {
+                label: yProp,
+                data: yValues,
+                borderColor: "rgba(75, 192, 192, 1)",
+                backgroundColor: "rgba(75, 192, 192, 0.2)",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            plugins: {
+              streaming: {
+                frameRate: 30,
+              },
+            },
+            scales: {
+              x: {
+                type: "realtime",
+                realtime: {
+                  duration: 30000,
+                  delay: 2000,
+                },
+              },
+            },
+          },
+        });
+      }
+
+
+      function drawCustomContributionCalendar(data) {
+        const aggregatedData = aggregateDataByDate(data, activityProp);
+        const startDate = moment().startOf("year");
+        const endDate = moment().endOf("year");
+        const numDays = endDate.diff(startDate, "days") + 1;
+        const numWeeks = Math.ceil(numDays / 7);
+
+        const container = d3.select("#custom-contribution-calendar");
+        container.html("");
+
+        const svg = container
+          .append("svg")
+          .attr("width", 15 * numWeeks + 50)
+          .attr("height", 120);
+
+        const color = d3.scaleSequential(d3.interpolateGreens).domain([0, 10]);
+
+        // Draw rectangles
+        for (let day = 0; day < numDays; day++) {
+          const date = startDate.clone().add(day, "days");
+          const dayOfWeek = date.day();
+          const week = Math.floor(day / 7);
+          const value = aggregatedData[date.format("YYYY-MM-DD")] || 0;
+
+          svg
+            .append("rect")
+            .attr("x", 15 * week + 50)
+            .attr("y", 12 * dayOfWeek + 20)
+            .attr("width", 10)
+            .attr("height", 10)
+            .attr("fill", value === 0 ? "#f0f0f0" : color(value))
+            .on("mouseover", function () {
+              tooltip.style("visibility", "visible");
+            })
+            .on("mousemove", function (event) {
+              tooltip
+                .text(value + " " + activityProp)
+                .style("top", event.pageY - 10 + "px")
+                .style("left", event.pageX + 10 + "px");
+            })
+            .on("mouseout", function () {
+              tooltip.style("visibility", "hidden");
+            });
+        }
+
+        // Draw month labels
+        for (
+          let month = startDate.clone();
+          month.isSameOrBefore(endDate);
+          month.add(1, "months")
+        ) {
+          const weeksSinceStartOfYear = month.week() - startDate.week();
+          svg
+            .append("text")
+            .attr("x", 15 * weeksSinceStartOfYear + 50)
+            .attr("y", 10)
+            .text(month.format("MMM"))
+            .style("font-size", "12px");
+        }
+
+        svg
+          .append("text")
+          .attr("x", (15 * numWeeks) / 2 + 50)
+          .attr("y", 115)
+          .text("My Contribution Calendar")
+          .style("font-size", "14px")
+          .style("text-anchor", "middle");
+
+        const tooltip = d3
+          .select("body")
+          .append("div")
+          .style("position", "absolute")
+          .style("visibility", "hidden")
+          .style("padding", "5px")
+          .style("background-color", "white")
+          .style("border", "1px solid black")
+          .style("border-radius", "5px")
+          .style("pointer-events", "none");
+
+        function aggregateDataByDate(data, activityProp) {
+          const aggregatedData = {};
+          data.forEach((row) => {
+            const date = moment(row.Date).format("YYYY-MM-DD");
+            const value = row[activityProp];
+            if (!aggregatedData[date]) {
+              aggregatedData[date] = value;
+            } else {
+              aggregatedData[date] += value;
+            }
+          });
+          return aggregatedData;
+        }
+      }
+
+      const saveJsonUrlButton = document.getElementById("saveJsonUrlButton");
+        if (saveJsonUrlButton) {
+          saveJsonUrlButton.addEventListener("click", saveJsonUrl);
+        }
+
+      // add this function
+      function logout() {
+        fetch("/logout", {
+          method: "POST",
+        }).then((response) => {
+          if (response.ok) {
+            location.href = "/login"; // redirect to login page
+          } else {
+            console.error("Error during logout:", response.status);
+          }
+        });
+      }
+
+      document
+        .getElementById("x-prop-select")
+        .addEventListener("change", (e) => {
+          xProp = e.target.value;
+          drawChart();
+        });
+
+      document
+        .getElementById("y-prop-select")
+        .addEventListener("change", (e) => {
+          yProp = e.target.value;
+          drawChart();
+        });
+
+      document
+        .getElementById("activity-prop-select")
+        .addEventListener("change", (e) => {
+          activityProp = e.target.value;
+          drawCustomContributionCalendar(calendarData);
+        });
+
+      function saveJsonUrl() {
+        const jsonUrl = document.getElementById("json-url-input").value;
+        if (!jsonUrl) {
+          alert("Please enter a JSON URL.");
+          return;
+        }
+
+        fetch("/saveUrls", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jsonUrl }),
+        })
+          .then((response) => {
+            if (response.ok) {
+              alert("JSON URL saved successfully.");
+            } else {
+              console.error("Error saving JSON URL:", response.status);
+            }
+          })
+          .catch((error) => {
+            console.error("Error saving JSON URL:", error);
+          });
+      }
+        document.getElementById("logoutButton").addEventListener("click", logout);
+        document.getElementById("loadDataButton").addEventListener("click", loadData);
+        document.getElementById("loadCalendarDataButton").addEventListener("click", loadCalendarData);
+        document.getElementById("saveJsonUrlButton").addEventListener("click", saveJsonUrl);
+    </script>
+    <button id="saveJsonUrlButton">Save JSON URL</button>
+  </body>
+</html>

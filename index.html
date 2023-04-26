@@ -35,19 +35,30 @@
   }
 
   async function loginUser(event) {
-    event.preventDefault();
-    const username = document.getElementById("login-username").value;
-    const password = document.getElementById("login-password").value;
+  event.preventDefault();
+  const username = document.getElementById("login-username").value;
+  const password = document.getElementById("login-password").value;
 
-    // Send a POST request to the server with the login data
-    const response = await fetch('/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
+  // Send a POST request to the server with the login data
+  const response = await fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
 
-    // Handle server response (e.g., show a success message, error message, redirect to another page, etc.)
+  // Check the status of the response
+  if (response.status === 200) {
+    // If the login was successful, redirect to the dashboard
+    window.location.href = '/dashboard';
+  } else {
+    // If there was an error with the login, show an error message
+    const error = await response.json();
+    console.error('Error:', error);
   }
+}
+
+
 </script>
+
   </body>
 </html>
