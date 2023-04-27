@@ -5,9 +5,9 @@
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script>
-      Chart.defaults.global.plugins.streaming = {
-        dateAdapter: moment,
-      };
+      Chart.defaults.plugins.streaming = Chart.defaults.plugins.streaming || {};
+      Chart.defaults.plugins.streaming.dateAdapter = moment;
+
     </script>
     <style>
       .container {
@@ -47,6 +47,7 @@
       <select id="activity-prop-select"></select>
       <div id="custom-contribution-calendar"></div>
     </div>
+    <button id="saveJsonUrlButton">Save JSON URL</button>
     <script>
       let data = null;
       let xProp = null;
@@ -125,22 +126,22 @@
       }
 
       // Declare the global chart variable
-      let chart;
+      let myChart;
 
       function drawChart() {
         const canvas = document.getElementById("chartCanvas");
         const context = canvas.getContext("2d");
 
         // Destroy the previous chart instance if it exists
-        if (chart) {
-          chart.destroy();
+        if (myChart) {
+          myChart.destroy();
         }
 
         const xValues = data.map((row) => moment.utc(row[xProp], "YYYY-MM-DD").toDate());
         const yValues = data.map((row) => row[yProp]);
 
         // Create a new chart instance and assign it to the global variable
-        chart = new Chart(context, {
+        myChart = new Chart(context, {
           type: "line",
           data: {
             labels: xValues,
@@ -155,11 +156,6 @@
             ],
           },
           options: {
-            plugins: {
-              streaming: {
-                frameRate: 30,
-              },
-            },
             scales: {
               x: {
                 type: "realtime",
@@ -279,7 +275,7 @@
           method: "POST",
         }).then((response) => {
           if (response.ok) {
-            location.href = "/login"; // redirect to login page
+            location.href = "/"; // redirect to login page
           } else {
             console.error("Error during logout:", response.status);
           }
@@ -337,6 +333,6 @@
         document.getElementById("loadCalendarDataButton").addEventListener("click", loadCalendarData);
         document.getElementById("saveJsonUrlButton").addEventListener("click", saveJsonUrl);
     </script>
-    <button id="saveJsonUrlButton">Save JSON URL</button>
+    
   </body>
 </html>
